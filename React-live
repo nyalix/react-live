@@ -1,0 +1,110 @@
+##!/bin/sh
+
+npm init
+
+mkdir -p dist/css/img
+mkdir -p dist/js
+mkdir -p dist/bundle
+
+mkdir -p src/css
+mkdir -p src/js
+
+ln -s ../../dist/css/img src/css
+
+
+npm install --save-dev gulp browser-sync gulp-jade gulp-stylus gulp-autoprefixer gulp-plumber browserify babelify vinyl-source-stream babel-plugin-transform-react-jsx react react-dom
+
+ln -s ../../node_modules/react/dist/react.js dist/bundle
+ln -s ../../node_modules/react-dom/dist/react-dom.js dist/bundle
+
+
+cat << EOF > dist/index.html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hello React!</title>
+        <script src="./bundle/react.js"></script>
+        <script src="./bundle/react-dom.js"></script>
+    <!-- No need for Babel! -->
+  </head>
+  <body>
+  		<div id="container"></div>
+        <script type="text/javascript" src="bundle.js"></script>
+  </body>
+</html>
+EOF
+
+cat << EOF > src/app.jsx
+var HelloMessage = React.createClass({
+    render: function() {
+        return <div>Hello {this.props.name}</div>;
+    }
+});
+
+React.render(
+    <HelloMessage name="world" />,
+    document.getElementById('container')
+);
+EOF
+
+cat << EOF > .babelrc
+{
+  "plugins": ["transform-react-jsx"]
+}
+EOF
+
+cat << EOF > gulpfile.js
+var gulp   = require('gulp');
+var browserSync = require('browser-sync').create();
+var jade   = require('gulp-jade');
+var stylus = require('gulp-stylus');
+var autoprefixer = require("gulp-autoprefixer");
+var plumber = require("gulp-plumber");
+
+var browserify = require('browserify');
+var babelify = require('babelify');
+var source = require('vinyl-source-stream');
+
+gulp.task('browserify', function() {
+  browserify('./src/app.jsx', { debug: true })
+    //.pipe(plumber())
+    .transform(babelify)
+    //.require('react')
+    .bundle()
+    .on("error", function (err) { console.log("Error : " + err.message); })
+    .pipe(source('bundle.js'))
+    .pipe(gulp.dest('./dist'));
+});
+
+gulp.task('jade', function() {
+  gulp.src('./src/*.jade')
+    .pipe(plumber())
+    .pipe(jade({pretty: true}))
+    .pipe(gulp.dest('./dist'));
+});
+
+gulp.task('stylus', function() {
+    gulp.src('./src/css/*.styl')
+      .pipe(plumber())
+      .pipe(stylus({print: true}))
+      .pipe(autoprefixer())
+      .pipe(gulp.dest('./dist/css'));
+});
+
+// Static server
+gulp.task('browser-sync', function() {
+    browserSync.init({
+        server: {
+            baseDir: "./dist"
+        }
+    });
+    gulp.watch('./src/*.jsx', ['browserify']);
+    gulp.watch('./src/*.jade', ['jade']);
+    gulp.watch('./src/css/*.styl', ['stylus']);
+    gulp.watch(['./dist/**','./dist/css/**'], function() {
+	    browserSync.reload();});
+});
+
+gulp.task('default', ['browserify','jade','stylus','browser-sync']);
+EOF
