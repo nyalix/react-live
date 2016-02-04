@@ -33,3 +33,5 @@ dist/index.html と scr/app.jsx を編集する
 
 see also
 - Getting Started | React https://facebook.github.io/react/docs/getting-started.html
+- 一人React.js Advent Calendar 2014
+http://qiita.com/advent-calendar/2014/reactjs
